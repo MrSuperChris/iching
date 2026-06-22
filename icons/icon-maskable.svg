@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Full-bleed background (no rounded corners) for maskable safe zone -->
+  <rect width="512" height="512" fill="#f4efe6"/>
+  <!-- content kept within the central ~80% safe zone -->
+  <g fill="#1c1a17">
+    <rect x="171" y="356" width="170" height="16" rx="3"/>
+    <rect x="171" y="324" width="74" height="16" rx="3"/><rect x="267" y="324" width="74" height="16" rx="3"/>
+    <rect x="171" y="292" width="170" height="16" rx="3" fill="#9c3022"/>
+    <rect x="171" y="260" width="74" height="16" rx="3"/><rect x="267" y="260" width="74" height="16" rx="3"/>
+    <rect x="171" y="228" width="170" height="16" rx="3"/>
+    <rect x="171" y="196" width="74" height="16" rx="3"/><rect x="267" y="196" width="74" height="16" rx="3"/>
+  </g>
+  <text x="256" y="150" font-family="Songti SC, STSong, SimSun, serif" font-size="104"
+        fill="#9c3022" text-anchor="middle" dominant-baseline="middle">易</text>
+</svg>

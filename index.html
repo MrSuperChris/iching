@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#f4efe6" />
+  <title>I Ching — Shake to Cast</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="grain" aria-hidden="true"></div>
+
+  <main id="app">
+    <!-- ============ HOME / CAST SCREEN ============ -->
+    <section id="screen-cast" class="screen active">
+      <header class="masthead">
+        <div class="seal" aria-hidden="true">易</div>
+        <h1>I&nbsp;Ching</h1>
+        <p class="subtitle">Book of Changes</p>
+      </header>
+
+      <div class="question-block">
+        <label for="question">Hold your question in mind</label>
+        <textarea id="question" rows="2" placeholder="What should I focus on right now?" maxlength="240"></textarea>
+      </div>
+
+      <div class="mode-toggle" role="tablist" aria-label="Casting mode">
+        <button id="mode-ritual" class="mode-btn active" role="tab" aria-selected="true">
+          <span class="mode-name">Ritual</span>
+          <span class="mode-desc">Shake 6 times · one line each</span>
+        </button>
+        <button id="mode-quick" class="mode-btn" role="tab" aria-selected="false">
+          <span class="mode-name">Quick</span>
+          <span class="mode-desc">One shake · whole hexagram</span>
+        </button>
+      </div>
+
+      <div class="cast-stage">
+        <div id="coins" class="coins" aria-hidden="true">
+          <span class="coin"></span><span class="coin"></span><span class="coin"></span>
+        </div>
+
+        <!-- The hexagram being built, line by line -->
+        <div id="building" class="building" aria-live="polite">
+          <div class="hex-lines" id="build-lines"></div>
+        </div>
+
+        <p id="cast-hint" class="cast-hint">Shake your phone to cast the first line</p>
+        <div id="progress-dots" class="progress-dots" aria-hidden="true"></div>
+
+        <button id="manual-cast" class="manual-cast">…or tap here to cast</button>
+      </div>
+
+      <button id="enable-motion" class="enable-motion hidden">Enable shake detection</button>
+      <p id="motion-note" class="motion-note"></p>
+    </section>
+
+    <!-- ============ READING SCREEN ============ -->
+    <section id="screen-reading" class="screen">
+      <button id="back-btn" class="back-btn">← New question</button>
+
+      <div id="reading-question" class="reading-question"></div>
+
+      <div class="hex-pair" id="hex-pair">
+        <figure class="hex-figure">
+          <div class="hex-lines big" id="primary-lines"></div>
+          <figcaption id="primary-caption"></figcaption>
+        </figure>
+        <div id="transform-arrow" class="transform-arrow" aria-hidden="true">→</div>
+        <figure class="hex-figure" id="transformed-figure" hidden>
+          <div class="hex-lines big" id="transformed-lines"></div>
+          <figcaption id="transformed-caption"></figcaption>
+        </figure>
+      </div>
+
+      <div id="changing-note" class="changing-note"></div>
+
+      <article id="reading-body" class="reading-body"></article>
+    </section>
+  </main>
+
+  <!-- Plain scripts (not modules) so it works when opened directly via file:// too. Order matters. -->
+  <script src="data.js"></script>
+  <script src="iching.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "I Ching — Shake to Cast",
+  "short_name": "I Ching",
+  "description": "Cast the Book of Changes by shaking your phone. Yarrow-stalk method, changing lines, classical and modern readings.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4efe6",
+  "theme_color": "#f4efe6",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
