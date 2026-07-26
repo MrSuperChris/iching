@@ -244,6 +244,22 @@ h1 {
 }
 .changing-note:empty { display: none; }
 
+.question-summary {
+  position: relative;
+  margin: 0 0 30px; padding: 16px 18px 16px 20px;
+  border: 1px solid var(--rule); border-left: 3px solid var(--seal);
+  border-radius: 8px; background: rgba(255,255,255,0.4);
+  font-size: 16px; line-height: 1.62; color: var(--ink-soft);
+}
+.question-summary[hidden] { display: none; }
+.question-summary::before {
+  content: "For your question"; display: block;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em;
+  color: var(--ink-faint); margin-bottom: 8px;
+}
+.question-summary strong { color: var(--seal); font-weight: 600; }
+.question-summary .qs-q { font-style: italic; color: var(--ink); }
+
 .reading-body { padding-bottom: 30px; }
 .reading-section { margin-bottom: 26px; }
 .reading-section h3 {

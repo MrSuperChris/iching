@@ -34,6 +34,7 @@ const el = {
   transformedCaption: $("transformed-caption"),
   transformArrow: $("transform-arrow"),
   changingNote: $("changing-note"),
+  questionSummary: $("question-summary"),
   readingBody: $("reading-body"),
 };
 
@@ -212,6 +213,55 @@ function renderHexLines(container, lines, changing) {
 
 const ORDINALS = ["first (bottom)", "second", "third", "fourth", "fifth", "sixth (top)"];
 
+// Escape user-supplied text before it goes anywhere via innerHTML.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// First sentence of a gloss, trimmed (glosses are static, trusted data).
+function firstSentence(text) {
+  const m = String(text).match(/^[^.!?]*[.!?]/);
+  return (m ? m[0] : String(text)).trim();
+}
+
+function lowerFirst(s) {
+  return s ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+}
+
+// Build a short interpretive summary tying the cast to the user's real question.
+// Template/heuristic only — no LLM, no network. Returns "" when there is no real
+// question (blank, or the placeholder left untouched), so blank casts are unchanged.
+function questionSummary(reading) {
+  const q = (reading.question || "").trim();
+  if (!q) return "";
+  const placeholder = (el.question.getAttribute("placeholder") || "").trim();
+  if (q === placeholder) return "";
+
+  const qHtml = escapeHtml(q);
+  const primaryCore = firstSentence(reading.primary.gloss);
+  const parts = [];
+  parts.push(
+    `On your question — <span class="qs-q">${qHtml}</span> — <strong>${reading.primary.name}</strong> answers: ${primaryCore}`
+  );
+
+  if (reading.transformed && reading.changingIndices.length > 0) {
+    const n = reading.changingIndices.length;
+    const which = reading.changingIndices.map((i) => ORDINALS[i]).join(", ");
+    const transformedCore = firstSentence(reading.transformed.gloss);
+    parts.push(
+      `The ${which} line${n > 1 ? "s are" : " is"} changing, so it moves toward ` +
+      `<strong>${reading.transformed.name}</strong> — ${lowerFirst(transformedCore)} ` +
+      `Read your question as passing from the first hexagram toward the second.`
+    );
+  } else {
+    parts.push(
+      "With no changing lines, the answer is settled — meet your question as it stands rather than waiting for it to shift."
+    );
+  }
+  return parts.join(" ");
+}
+
 function showReading() {
   const reading = readingFromValues(state.values, el.question.value.trim());
   const { primary, transformed, changingIndices } = reading;
@@ -240,6 +290,16 @@ function showReading() {
     el.changingNote.innerHTML =
       `Changing line${changingIndices.length > 1 ? "s" : ""} (marked in cinnabar): the ${which} line${changingIndices.length > 1 ? "s" : ""}. ` +
       `These transform the present situation into <strong>${transformed.name}</strong> — read the first hexagram as where you are, the second as where it is heading.`;
+  }
+
+  // question-tied summary (only when a real question was posed)
+  const summary = questionSummary(reading);
+  if (summary) {
+    el.questionSummary.innerHTML = summary;
+    el.questionSummary.hidden = false;
+  } else {
+    el.questionSummary.innerHTML = "";
+    el.questionSummary.hidden = true;
   }
 
   // body: gloss + classical for primary (+ transformed if present)
