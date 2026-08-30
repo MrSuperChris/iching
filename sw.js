@@ -1,7 +1,9 @@
 // Offline cache for the I Ching PWA.
 // Network-first: always prefer fresh files when online, fall back to cache offline.
 // (Cache-first traps stale assets, which masks updates — avoid it here.)
-const CACHE = "iching-v3";
+// Bump CACHE on every deploy: a changed sw.js makes returning clients pick up the
+// new worker, which purges the old cache in activate() — no hard-refresh needed.
+const CACHE = "iching-v4";
 const ASSETS = [
   "./",
   "./index.html",
@@ -28,10 +30,16 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    fetch(e.request)
+    // Force the network attempt past the browser HTTP cache, or "network-first"
+    // can still hand back an HTTP-cached stale asset (GitHub Pages max-age=600).
+    fetch(e.request, { cache: "reload" })
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        // Only cache a genuine success — never a 404/5xx error page served during a
+        // deploy window, which would otherwise become the stale offline fallback.
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(e.request))
