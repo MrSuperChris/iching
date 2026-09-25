@@ -23,7 +23,6 @@ const el = {
   castHint: $("cast-hint"),
   dots: $("progress-dots"),
   manualCast: $("manual-cast"),
-  enableMotion: $("enable-motion"),
   motionNote: $("motion-note"),
   back: $("back-btn"),
   readingQuestion: $("reading-question"),
@@ -374,25 +373,37 @@ function setupMotion() {
     el.motionNote.textContent = "Shake not available on this device — tap to cast instead.";
     return;
   }
-  // iOS 13+ requires explicit permission via a user gesture.
-  const needsPermission = typeof DeviceMotionEvent.requestPermission === "function";
-  if (needsPermission) {
-    el.enableMotion.classList.remove("hidden");
-    el.motionNote.textContent = "Tap to allow motion access, then shake to cast.";
-    el.enableMotion.addEventListener("click", async () => {
+  // requestPermission() exists on iPadOS Safari AND on recent Chrome (incl. Android), so
+  // its presence doesn't mean a prompt is needed. Listen right away: if real readings
+  // arrive, motion already works (Android) and we never ask. Only if nothing has arrived
+  // by the first tap do we request — iPadOS requires that call to come from a user gesture.
+  const hasPermissionApi = typeof DeviceMotionEvent.requestPermission === "function";
+  if (hasPermissionApi) {
+    startMotion();
+    let settled = false;
+    const markGranted = (e) => {
+      // Chrome can fire a reading-less event when sensors are unavailable or blocked.
+      const a = e && (e.accelerationIncludingGravity || e.acceleration);
+      if (settled || !a || a.x == null) return;
+      settled = true;
+      window.removeEventListener("devicemotion", markGranted);
+      document.removeEventListener("click", askOnGesture, true);
+      el.motionNote.textContent = "Shake your phone to cast.";
+    };
+    window.addEventListener("devicemotion", markGranted, { passive: true });
+    async function askOnGesture() {
+      if (settled) return;
+      document.removeEventListener("click", askOnGesture, true);
       try {
         const res = await DeviceMotionEvent.requestPermission();
-        if (res === "granted") {
-          startMotion();
-          el.enableMotion.classList.add("hidden");
-          el.motionNote.textContent = "Shake away.";
-        } else {
-          el.motionNote.textContent = "Motion denied — tap to cast instead.";
-        }
+        if (res === "granted") markGranted();
+        else el.motionNote.textContent = "Motion denied — tap to cast instead.";
       } catch (_) {
         el.motionNote.textContent = "Motion unavailable — tap to cast instead.";
       }
-    });
+    }
+    document.addEventListener("click", askOnGesture, true);
+    el.motionNote.textContent = "Shake your phone to cast.";
   } else {
     startMotion();
     el.motionNote.textContent = "Shake your phone to cast. (On desktop, tap or press space.)";

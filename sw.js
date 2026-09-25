@@ -3,7 +3,7 @@
 // (Cache-first traps stale assets, which masks updates — avoid it here.)
 // Bump CACHE on every deploy: a changed sw.js makes returning clients pick up the
 // new worker, which purges the old cache in activate() — no hard-refresh needed.
-const CACHE = "iching-v4";
+const CACHE = "iching-v5";
 const ASSETS = [
   "./",
   "./index.html",

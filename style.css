@@ -204,12 +204,6 @@ h1 {
 .manual-cast:active { color: var(--seal); }
 
 /* ---------- enable motion ---------- */
-.enable-motion {
-  margin: 10px auto 0; display: block; cursor: pointer;
-  background: var(--seal); color: var(--paper); border: none; border-radius: 8px;
-  padding: 12px 22px; font-family: var(--font-serif); font-size: 16px; letter-spacing: 0.04em;
-}
-.enable-motion.hidden { display: none; }
 .motion-note { text-align: center; color: var(--ink-faint); font-size: 12.5px; margin-top: 10px; font-style: italic; }
 
 /* ---------- reading screen ---------- */
