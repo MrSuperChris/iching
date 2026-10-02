@@ -252,7 +252,60 @@ h1 {
   color: var(--ink-faint); margin-bottom: 8px;
 }
 .question-summary strong { color: var(--seal); font-weight: 600; }
-.question-summary .qs-q { font-style: italic; color: var(--ink); }
+.question-summary .qs-q { font-style: italic; color: var(--ink); display: block; margin-bottom: 8px; }
+.question-summary p { margin: 0 0 8px; }
+.question-summary p:last-child { margin-bottom: 0; }
+
+/* Live oracle answer: relabel the box, and pulse faintly while consulting. */
+.question-summary.from-oracle::before { content: "The oracle responds"; }
+.question-summary.consulting::after {
+  content: "consulting the oracle…";
+  display: block; margin-top: 10px;
+  font-size: 12px; font-style: italic; letter-spacing: 0.04em;
+  color: var(--ink-faint);
+  animation: oracle-pulse 1.3s ease-in-out infinite;
+}
+@keyframes oracle-pulse { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
+
+/* ---------- oracle settings ---------- */
+.oracle-settings { margin-top: 22px; text-align: center; }
+.settings-toggle {
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-serif); font-size: 12px; font-style: italic;
+  letter-spacing: 0.08em; color: var(--ink-faint);
+  text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--rule);
+}
+.settings-toggle:hover { color: var(--ink-soft); }
+.settings-panel {
+  margin: 14px auto 0; max-width: 360px; text-align: left;
+  padding: 16px 16px 14px;
+  border: 1px solid var(--rule); border-radius: 10px;
+  background: rgba(255,255,255,0.4);
+}
+.settings-panel[hidden] { display: none; }
+.settings-panel label {
+  display: block; font-size: 11px; text-transform: uppercase;
+  letter-spacing: 0.16em; color: var(--ink-faint); margin-bottom: 7px;
+}
+#groq-key {
+  width: 100%; background: rgba(255,255,255,0.6);
+  border: none; border-bottom: 1.5px solid var(--rule);
+  padding: 8px 6px; font-family: var(--font-serif); font-size: 15px; color: var(--ink);
+}
+#groq-key:focus { outline: none; border-bottom-color: var(--seal); }
+.settings-note {
+  font-size: 12.5px; line-height: 1.55; color: var(--ink-soft);
+  font-style: italic; margin: 10px 0 12px;
+}
+.settings-actions { display: flex; align-items: center; gap: 12px; }
+.settings-save {
+  background: var(--seal); color: var(--paper); border: none; cursor: pointer;
+  font-family: var(--font-serif); font-size: 14px; letter-spacing: 0.04em;
+  padding: 7px 18px; border-radius: 6px;
+}
+.settings-save:hover { background: var(--seal-soft); }
+.settings-status { font-size: 12.5px; font-style: italic; color: var(--ink-faint); }
 
 .reading-body { padding-bottom: 30px; }
 .reading-section { margin-bottom: 26px; }

@@ -55,6 +55,27 @@
       </div>
 
       <p id="motion-note" class="motion-note"></p>
+
+      <!-- Oracle settings: optional Groq key so the reading responds to the question.
+           Collapsed by default; the app works fully without it (template fallback). -->
+      <div class="oracle-settings">
+        <button id="settings-toggle" class="settings-toggle" aria-expanded="false"
+                aria-controls="settings-panel">Oracle settings</button>
+        <div id="settings-panel" class="settings-panel" hidden>
+          <label for="groq-key">Groq API key (optional)</label>
+          <input id="groq-key" type="password" inputmode="text" autocomplete="off"
+                 spellcheck="false" placeholder="gsk_…" />
+          <p class="settings-note">
+            With a key, the oracle reads your question and answers in its own words.
+            Leave blank to use the key you saved in Babel, or to keep the plain reading.
+            The key stays on this device; your question and cast go only to Groq's free tier.
+          </p>
+          <div class="settings-actions">
+            <button id="settings-save" class="settings-save">Save</button>
+            <span id="settings-status" class="settings-status" aria-live="polite"></span>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ============ READING SCREEN ============ -->
@@ -86,6 +107,7 @@
   <!-- Plain scripts (not modules) so it works when opened directly via file:// too. Order matters. -->
   <script src="data.js"></script>
   <script src="iching.js"></script>
+  <script src="oracle.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

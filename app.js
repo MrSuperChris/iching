@@ -35,6 +35,11 @@ const el = {
   changingNote: $("changing-note"),
   questionSummary: $("question-summary"),
   readingBody: $("reading-body"),
+  settingsToggle: $("settings-toggle"),
+  settingsPanel: $("settings-panel"),
+  groqKey: $("groq-key"),
+  settingsSave: $("settings-save"),
+  settingsStatus: $("settings-status"),
 };
 
 /* ---------------- helpers ---------------- */
@@ -261,6 +266,57 @@ function questionSummary(reading) {
   return parts.join(" ");
 }
 
+// Oracle request lifecycle: a token so a stale in-flight call (user went back and
+// cast again) can't overwrite the current reading, and a controller to abort it.
+let oracleToken = 0;
+let oracleController = null;
+
+// Render the question-tied box. Always shows the offline template when there is a
+// real question; if a Groq key is available, it then asks the live oracle and, on
+// success, replaces the template with a reading that actually answers the question.
+// Any failure leaves the template in place — the app never shows an error here.
+function renderQuestionInterpretation(reading) {
+  const template = questionSummary(reading);
+  const myToken = ++oracleToken;
+  if (oracleController) { oracleController.abort(); oracleController = null; }
+
+  // No real question → no box at all (unchanged behaviour for blank casts).
+  if (!template) {
+    el.questionSummary.innerHTML = "";
+    el.questionSummary.hidden = true;
+    el.questionSummary.classList.remove("consulting", "from-oracle");
+    return;
+  }
+
+  // Show the template immediately so there is always a grounded answer.
+  el.questionSummary.innerHTML = template;
+  el.questionSummary.hidden = false;
+  el.questionSummary.classList.remove("consulting", "from-oracle");
+
+  const oracle = window.IChingOracle;
+  const key = oracle ? oracle.resolveGroqKey() : "";
+  if (!oracle || !key) return; // no key → keep the template, silently.
+
+  // Mark as consulting and fire the live call.
+  el.questionSummary.classList.add("consulting");
+  oracleController = new AbortController();
+  oracle.consultOracle(reading, key, { signal: oracleController.signal })
+    .then((text) => {
+      if (myToken !== oracleToken) return; // a newer reading superseded this one
+      const qHtml = escapeHtml((reading.question || "").trim());
+      const body = escapeHtml(text).replace(/\n{2,}/g, "</p><p>").replace(/\n/g, " ");
+      el.questionSummary.innerHTML =
+        `<span class="qs-q">${qHtml}</span><p>${body}</p>`;
+      el.questionSummary.classList.remove("consulting");
+      el.questionSummary.classList.add("from-oracle");
+    })
+    .catch(() => {
+      if (myToken !== oracleToken) return;
+      // Leave the template in place; just drop the consulting state.
+      el.questionSummary.classList.remove("consulting");
+    });
+}
+
 function showReading() {
   const reading = readingFromValues(state.values, el.question.value.trim());
   const { primary, transformed, changingIndices } = reading;
@@ -291,15 +347,9 @@ function showReading() {
       `These transform the present situation into <strong>${transformed.name}</strong> — read the first hexagram as where you are, the second as where it is heading.`;
   }
 
-  // question-tied summary (only when a real question was posed)
-  const summary = questionSummary(reading);
-  if (summary) {
-    el.questionSummary.innerHTML = summary;
-    el.questionSummary.hidden = false;
-  } else {
-    el.questionSummary.innerHTML = "";
-    el.questionSummary.hidden = true;
-  }
+  // question-tied interpretation (only when a real question was posed):
+  // template first, then upgrade to a live oracle reading if a key is present.
+  renderQuestionInterpretation(reading);
 
   // body: gloss + classical for primary (+ transformed if present)
   let html = "";
@@ -429,6 +479,41 @@ window.addEventListener("keydown", (e) => {
     triggerCast();
   }
 });
+
+/* ---------------- oracle settings ---------------- */
+function loadOwnKey() {
+  try {
+    const s = JSON.parse(localStorage.getItem("iching-settings") || "{}");
+    return (s && typeof s.groqKey === "string") ? s.groqKey : "";
+  } catch (_) { return ""; }
+}
+
+if (el.settingsToggle) {
+  el.settingsToggle.addEventListener("click", () => {
+    const open = el.settingsPanel.hasAttribute("hidden");
+    if (open) {
+      el.groqKey.value = loadOwnKey();
+      el.settingsStatus.textContent = "";
+      el.settingsPanel.removeAttribute("hidden");
+      el.settingsToggle.setAttribute("aria-expanded", "true");
+    } else {
+      el.settingsPanel.setAttribute("hidden", "");
+      el.settingsToggle.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  el.settingsSave.addEventListener("click", () => {
+    const key = el.groqKey.value.trim();
+    try {
+      const s = JSON.parse(localStorage.getItem("iching-settings") || "{}");
+      s.groqKey = key;
+      localStorage.setItem("iching-settings", JSON.stringify(s));
+      el.settingsStatus.textContent = key ? "Saved." : "Cleared — using Babel's key if set.";
+    } catch (_) {
+      el.settingsStatus.textContent = "Could not save on this device.";
+    }
+  });
+}
 
 resetCast();
 setupMotion();
