@@ -16,7 +16,7 @@
 // and does not train on inputs; retention is off by default. Verified on Groq's own
 // pages 2026-10-02.
 //
-// Depends on nothing; app.js calls consultOracle() and resolveGroqKey().
+// Depends on nothing; app.js calls consultOracle() and resolveGroqKeySource().
 
 // Groq-hosted open chat model. llama-3.3-70b-versatile is chosen over the faster
 // 8B-instant because the whole point of this feature is interpretive quality —
@@ -32,20 +32,33 @@ const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 //   2. otherwise Babel's key (voice-tasker-settings.openaiKey) — "one paste for both".
 // This gives zero-friction use when Babel is already set up, while still letting
 // I Ching hold its own key if the user prefers to keep them separate.
-function resolveGroqKey() {
+function resolveGroqKeySource() {
   try {
     const own = JSON.parse(localStorage.getItem("iching-settings") || "{}");
     if (own && typeof own.groqKey === "string" && own.groqKey.trim()) {
-      return own.groqKey.trim();
+      return { key: own.groqKey.trim(), source: "own" };
     }
   } catch (_) { /* fall through to Babel */ }
   try {
     const babel = JSON.parse(localStorage.getItem("voice-tasker-settings") || "{}");
     if (babel && typeof babel.openaiKey === "string" && babel.openaiKey.trim()) {
-      return babel.openaiKey.trim();
+      return { key: babel.openaiKey.trim(), source: "babel" };
     }
   } catch (_) { /* no key anywhere */ }
-  return "";
+  return { key: "", source: "" };
+}
+
+function resolveGroqKey() {
+  return resolveGroqKeySource().key;
+}
+
+// Failures carry a `kind` so app.js can say in plain words why the oracle didn't
+// answer: "nokey" | "auth" | "rate" | "network" | "http" | "empty" | "abort".
+function oracleError(kind, message, status) {
+  const err = new Error(message);
+  err.kind = kind;
+  if (status) err.status = status;
+  return err;
 }
 
 const ORACLE_SYSTEM = [
@@ -88,38 +101,48 @@ function buildOraclePrompt(reading) {
 // Ask the oracle. Returns the interpretation string on success.
 // THROWS on any failure (no key, network, non-2xx, empty) so the caller can fall
 // back to the template — this function never returns a half-answer or an error string.
+// The thrown error's `kind` says which failure it was (see oracleError above).
 async function consultOracle(reading, apiKey, { signal } = {}) {
   const key = (apiKey || "").trim();
-  if (!key) throw new Error("no Groq key");
+  if (!key) throw oracleError("nokey", "no Groq key");
 
-  const res = await fetch(GROQ_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${key}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: ORACLE_MODEL,
-      temperature: 0.7,
-      max_tokens: 320,
-      messages: [
-        { role: "system", content: ORACLE_SYSTEM },
-        { role: "user", content: buildOraclePrompt(reading) },
-      ],
-    }),
-    signal,
-  });
+  let res;
+  try {
+    res = await fetch(GROQ_URL, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: ORACLE_MODEL,
+        temperature: 0.7,
+        max_tokens: 320,
+        messages: [
+          { role: "system", content: ORACLE_SYSTEM },
+          { role: "user", content: buildOraclePrompt(reading) },
+        ],
+      }),
+      signal,
+    });
+  } catch (e) {
+    if (e && e.name === "AbortError") throw oracleError("abort", "aborted");
+    throw oracleError("network", "network error");
+  }
 
   if (!res.ok) {
     let detail = "";
     try { detail = (await res.json()).error?.message || ""; } catch (_) {}
-    throw new Error(`Groq ${res.status}${detail ? ": " + detail : ""}`);
+    const kind = res.status === 429 ? "rate"
+      : (res.status === 401 || res.status === 403) ? "auth" : "http";
+    throw oracleError(kind, `Groq ${res.status}${detail ? ": " + detail : ""}`, res.status);
   }
-  const data = await res.json();
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error("Groq returned no text");
+  let data;
+  try { data = await res.json(); } catch (_) { data = null; }
+  const text = data?.choices?.[0]?.message?.content?.trim();
+  if (!text) throw oracleError("empty", "Groq returned no text");
   return text;
 }
 
 // Expose for app.js (plain scripts, shared globals — same pattern as the rest of the app).
-window.IChingOracle = { consultOracle, resolveGroqKey, buildOraclePrompt, ORACLE_MODEL };
+window.IChingOracle = { consultOracle, resolveGroqKey, resolveGroqKeySource, buildOraclePrompt, ORACLE_MODEL };

@@ -266,6 +266,12 @@ h1 {
   animation: oracle-pulse 1.3s ease-in-out infinite;
 }
 @keyframes oracle-pulse { 0%,100% { opacity: 0.45; } 50% { opacity: 1; } }
+/* Why the oracle didn't answer: a quiet hint under the template, not an error banner. */
+.question-summary .qs-why {
+  margin: 10px 0 0;
+  font-size: 12px; font-style: italic; letter-spacing: 0.04em; line-height: 1.5;
+  color: var(--ink-faint);
+}
 
 /* ---------- oracle settings ---------- */
 .oracle-settings { margin-top: 22px; text-align: center; }

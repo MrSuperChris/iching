@@ -271,10 +271,34 @@ function questionSummary(reading) {
 let oracleToken = 0;
 let oracleController = null;
 
+// Why the oracle didn't answer, in plain words, for the quiet line under the template.
+// Never includes the key or Groq's own error text — only the kind of failure.
+function oracleFallbackNote(err) {
+  const kind = err && err.kind;
+  if (kind === "nokey") {
+    return "No Groq key found on this device, so this is the plain reading. Add one in Oracle settings.";
+  }
+  let reason;
+  if (kind === "rate") reason = "Groq's rate limit was reached — try again in a minute";
+  else if (kind === "auth") reason = "Groq refused the key";
+  else if (kind === "network") reason = navigator.onLine === false ? "you're offline" : "network error";
+  else if (kind === "empty") reason = "Groq sent back an empty answer";
+  else if (err && err.status) reason = `Groq error ${err.status}`;
+  else reason = "unexpected error";
+  return `The oracle couldn't be reached (${reason}), so this is the plain reading.`;
+}
+
+function showOracleNote(text) {
+  const note = document.createElement("p");
+  note.className = "qs-why";
+  note.textContent = text;
+  el.questionSummary.appendChild(note);
+}
+
 // Render the question-tied box. Always shows the offline template when there is a
 // real question; if a Groq key is available, it then asks the live oracle and, on
 // success, replaces the template with a reading that actually answers the question.
-// Any failure leaves the template in place — the app never shows an error here.
+// Any failure leaves the template in place, with one quiet line saying why.
 function renderQuestionInterpretation(reading) {
   const template = questionSummary(reading);
   const myToken = ++oracleToken;
@@ -295,7 +319,10 @@ function renderQuestionInterpretation(reading) {
 
   const oracle = window.IChingOracle;
   const key = oracle ? oracle.resolveGroqKey() : "";
-  if (!oracle || !key) return; // no key → keep the template, silently.
+  if (!oracle || !key) { // no key → keep the template, and say so.
+    showOracleNote(oracleFallbackNote({ kind: "nokey" }));
+    return;
+  }
 
   // Mark as consulting and fire the live call.
   el.questionSummary.classList.add("consulting");
@@ -310,10 +337,12 @@ function renderQuestionInterpretation(reading) {
       el.questionSummary.classList.remove("consulting");
       el.questionSummary.classList.add("from-oracle");
     })
-    .catch(() => {
+    .catch((err) => {
       if (myToken !== oracleToken) return;
-      // Leave the template in place; just drop the consulting state.
+      // Leave the template in place, drop the consulting state, and say why.
       el.questionSummary.classList.remove("consulting");
+      if (err && err.kind === "abort") return;
+      showOracleNote(oracleFallbackNote(err));
     });
 }
 
@@ -488,12 +517,21 @@ function loadOwnKey() {
   } catch (_) { return ""; }
 }
 
+// Where the oracle's key will come from, so it's visible without guessing.
+function keySourceText() {
+  const oracle = window.IChingOracle;
+  const source = oracle ? oracle.resolveGroqKeySource().source : "";
+  if (source === "own") return "Using this app's key.";
+  if (source === "babel") return "Using Babel's key from this browser.";
+  return "No key found — readings use the plain text.";
+}
+
 if (el.settingsToggle) {
   el.settingsToggle.addEventListener("click", () => {
     const open = el.settingsPanel.hasAttribute("hidden");
     if (open) {
       el.groqKey.value = loadOwnKey();
-      el.settingsStatus.textContent = "";
+      el.settingsStatus.textContent = keySourceText();
       el.settingsPanel.removeAttribute("hidden");
       el.settingsToggle.setAttribute("aria-expanded", "true");
     } else {
@@ -508,7 +546,7 @@ if (el.settingsToggle) {
       const s = JSON.parse(localStorage.getItem("iching-settings") || "{}");
       s.groqKey = key;
       localStorage.setItem("iching-settings", JSON.stringify(s));
-      el.settingsStatus.textContent = key ? "Saved." : "Cleared — using Babel's key if set.";
+      el.settingsStatus.textContent = (key ? "Saved. " : "Cleared. ") + keySourceText();
     } catch (_) {
       el.settingsStatus.textContent = "Could not save on this device.";
     }
