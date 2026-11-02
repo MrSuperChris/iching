@@ -18,12 +18,23 @@
 //
 // Depends on nothing; app.js calls consultOracle() and resolveGroqKeySource().
 
-// Groq-hosted open chat model. llama-3.3-70b-versatile is chosen over the faster
-// 8B-instant because the whole point of this feature is interpretive quality —
-// relating a contemplative question to the hexagram — and the 70B is markedly better
-// at register and nuance at this length. Free-tier limits (30 req/min, ~1k/day) are
-// far beyond any real personal use; a single reading is ~1.5k in + ~300 out tokens.
-const ORACLE_MODEL = "llama-3.3-70b-versatile";
+// Groq-hosted open chat model. Was llama-3.3-70b-versatile until Groq RETIRED that
+// model on 2026-08-16 (console.groq.com/docs/deprecations, checked 2026-11-02); after
+// the shutdown a request for that id returns HTTP 404, which surfaced to Chris as
+// "the oracle couldn't be reached (Groq error 404)" and made the app fall back to the
+// template on every reading. openai/gpt-oss-120b is Groq's OWN recommended replacement
+// for the retired model, is a current production (not preview) model on the free tier,
+// and is well suited to a 2-4 sentence interpretive answer. Provider and privacy are
+// unchanged (Groq free tier, client-side, no server) — only the model id moved,
+// because Groq moved it.
+//
+// gpt-oss-120b is a REASONING model: reasoning tokens count toward the completion
+// budget, so a small max_tokens could be spent on reasoning and return empty content
+// (which would silently fall back forever — the very failure we are fixing). Per Groq's
+// reasoning docs (console.groq.com/docs/reasoning, 2026-11-02) we therefore set
+// reasoning_effort "low", include_reasoning false, and a 1024-token budget, and read
+// the clean final answer from message.content as before.
+const ORACLE_MODEL = "openai/gpt-oss-120b";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // KEY SHARING (Chris's decision): the four PWAs on mrsuperchris.github.io share one
@@ -117,7 +128,11 @@ async function consultOracle(reading, apiKey, { signal } = {}) {
       body: JSON.stringify({
         model: ORACLE_MODEL,
         temperature: 0.7,
-        max_tokens: 320,
+        // gpt-oss reasoning tokens share this budget; 1024 leaves room for a short
+        // "low"-effort reasoning pass plus the 2-4 sentence answer (see model note above).
+        max_completion_tokens: 1024,
+        reasoning_effort: "low",
+        include_reasoning: false,
         messages: [
           { role: "system", content: ORACLE_SYSTEM },
           { role: "user", content: buildOraclePrompt(reading) },
